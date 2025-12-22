@@ -1,4 +1,4 @@
-name: build-ipk (OpenWrt 24.10.2 x86_64)
+name: build-ipk
 
 on:
   push:
@@ -8,7 +8,6 @@ permissions:
   contents: write
 
 env:
-  RELEASE: 24.10.2
   TARGET: x86
   SUBTARGET: 64
   PKG_DIR_NAME: luci-app-adguardhome
@@ -16,6 +15,10 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        openwrt_branch: ['24.10']
+      fail-fast: false
 
     steps:
       - name: 检出代码
@@ -23,13 +26,34 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: 获取 OpenWrt ${{ matrix.openwrt_branch }} 最新稳定版本
+        run: |
+          set -eux
+          BASE_URL="https://downloads.openwrt.org/releases/"
+          BRANCH="${{ matrix.openwrt_branch }}"
+          
+          LATEST_RELEASE=$(curl -fsSL "$BASE_URL" | \
+            grep -oE "href=\"${BRANCH}\.[0-9]+/\"" | \
+            grep -oE "${BRANCH}\.[0-9]+" | \
+            sort -V | \
+            tail -n1)
+          
+          if [ -z "$LATEST_RELEASE" ]; then
+            echo "错误: 无法获取 ${BRANCH} 的最新稳定版本"
+            exit 1
+          fi
+          
+          echo "检测到 ${BRANCH} 最新稳定版本: ${LATEST_RELEASE}"
+          echo "RELEASE=${LATEST_RELEASE}" >> "$GITHUB_ENV"
+          echo "OPENWRT_BRANCH=${BRANCH}" >> "$GITHUB_ENV"
+
       - name: 验证 tag 格式
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           TAG="${GITHUB_REF_NAME}"
           echo "使用 Tag: ${TAG}"
           if ! echo "${TAG}" | grep -qE '^v?[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$'; then
-            echo "错误: Tag 格式应为 v2.1.1-1 或 2.1.1-1"
+            echo "Tag 格式错误"
             exit 1
           fi
           VERSION=$(echo "${TAG}" | sed 's/^v//' | cut -d'-' -f1)
@@ -93,7 +117,7 @@ jobs:
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: ipks-${{ github.ref_name }}-x86_64
+          name: ipks-${{ github.ref_name }}-openwrt${{ matrix.openwrt_branch }}-x86_64
           path: out/
           if-no-files-found: error
 
