@@ -61,6 +61,21 @@ o:value("redirect", translate("Redirect 53 port to AdGuardHome"))
 o:value("exchange", translate("Use port 53 replace dnsmasq"))
 o.default     = "none"
 o.optional = true
+
+o = s:option(DynamicList, "wan_ifname", translate("WAN Interface"))
+o.datatype = "string"
+o.description = translate("Only effective in redirect mode, bypass specified interfaces to avoid becoming a public DNS resolver")
+local sys = require "luci.sys"
+local util = require "luci.util"
+local ifaces = sys.exec("ls -1 /sys/class/net/ 2>/dev/null")
+if ifaces then
+	for iface in ifaces:gmatch("%S+") do
+		if iface ~= "lo" then
+			o:value(iface, iface)
+		end
+	end
+end
+
 o = s:option(Value, "binpath", translate("Bin Path"), translate("AdGuardHome Bin path if no bin will auto download"))
 o.default = "/usr/bin/AdGuardHome/AdGuardHome"
 o.datatype = "string"
