@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-adguardhome
 PKG_VERSION:=2.2.0
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_LICENSE:=MIT
 PKG_LICENSE_FILES:=LICENSE
@@ -49,6 +49,7 @@ define Package/luci-app-adguardhome/install
 	cp -pR ./root/* $(1)/
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
 	po2lmo ./po/zh-cn/AdGuardHome.po $(1)/usr/lib/lua/luci/i18n/AdGuardHome.zh-cn.lmo
+	$(INSTALL_DATA) ./root/usr/share/AdGuardHome/adguardhome.nft.tpl $(1)/usr/share/AdGuardHome/adguardhome.nft.tpl
 endef
 
 define Package/luci-app-adguardhome/postinst
