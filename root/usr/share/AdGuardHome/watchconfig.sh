@@ -10,4 +10,4 @@ do
 		break
 	fi
 done
-return 0
+exit 0
