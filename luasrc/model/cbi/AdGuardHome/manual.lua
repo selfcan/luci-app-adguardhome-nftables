@@ -38,6 +38,7 @@ o.validate=function(self, value)
 end
 o.write = function(self, section, value)
 	fs.move("/tmp/AdGuardHometmpconfig.yaml",configpath)
+	io.popen("/etc/init.d/AdGuardHome reload >/dev/null 2>&1 &")
 end
 o.remove = function(self, section, value) fs.writefile(configpath, "") end
 
@@ -59,8 +60,5 @@ o.cfgvalue = function(self, section)
 	return fs.readfile("/tmp/AdGuardHometest.log")
 end
 end
-end
-function m.on_commit(map)
-	io.popen("/etc/init.d/AdGuardHome reload &")
 end
 return m
