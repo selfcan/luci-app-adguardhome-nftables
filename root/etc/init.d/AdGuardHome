@@ -6,15 +6,12 @@ START=95
 STOP=01
 
 CONFIGURATION=AdGuardHome
-CRON_FILE=/etc/crontabs/root
 NFT_RULES_FILE="/var/etc/adguardhome.nft"
 NFT_RULES_TPL="/usr/share/AdGuardHome/adguardhome.nft.tpl"
 NFT_TABLE="adguardhome"
 
-EXTRA_COMMANDS="do_redirect testbackup test_crontab force_reload isrunning"
+EXTRA_COMMANDS="do_redirect force_reload isrunning"
 EXTRA_HELP="        do_redirect 0 or 1\
-        testbackup backup or restore\
-		test_crontab
 		force_reload
 		isrunning"
 
@@ -335,43 +332,6 @@ boot_service() {
     fi
 }
 
-testbackup() {
-    config_load "${CONFIGURATION}"
-    [ "$1" = "backup" ] && backup
-    [ "$1" = "restore" ] && restore
-}
-
-restore() {
-    config_get workdir $CONFIGURATION workdir "/usr/bin/AdGuardHome"
-    config_get backupwdpath $CONFIGURATION backupwdpath "/usr/bin/AdGuardHome"
-    cp -u -r -f "$backupwdpath/data" "$workdir"
-}
-
-backup() {
-    config_get backupwdpath $CONFIGURATION backupwdpath "/usr/bin/AdGuardHome"
-    mkdir -p "$backupwdpath/data"
-    config_get workdir $CONFIGURATION workdir "/usr/bin/AdGuardHome"
-    config_get backupfile $CONFIGURATION backupfile ""
-    for one in $backupfile; do
-        while : ; do
-            if [ -d "$backupwdpath/data/$one" ]; then
-                cpret=$(cp -u -r -f "$workdir/data/$one" "$backupwdpath/data" 2>&1)
-            else
-                cpret=$(cp -u -r -f "$workdir/data/$one" "$backupwdpath/data/$one" 2>&1)
-            fi
-            echo "$cpret"
-            echo "$cpret" | grep -q "no space left on device" || break
-
-            echo "磁盘已满,删除log重试中"
-            del_querylog && continue
-            rm -f -r "$backupwdpath/data/filters"
-            rm -f -r "$workdir/data/filters" && continue
-            echo "backup failed"
-            break
-        done
-    done
-}
-
 start_service() {
     rm -f /var/run/AdGserverdis 2>/dev/null
     config_load "${CONFIGURATION}"
@@ -384,18 +344,13 @@ start_service() {
     fi
     local enabled
     config_get_bool enabled $CONFIGURATION enabled 0
-    do_crontab
     if [ "$enabled" = "0" ]; then
         _do_redirect 0
         return
     fi
     config_get workdir $CONFIGURATION workdir "/usr/bin/AdGuardHome"
 
-    config_get backupfile $CONFIGURATION backupfile ""
     mkdir -p "$workdir/data"
-    if [ -n "$backupfile" ] && [ ! -d "$workdir/data" ]; then
-        restore
-    fi
     local cwdfs
     cwdfs=$(get_filesystem "$workdir")
     echo "workdir is a $cwdfs filesystem"
@@ -481,34 +436,9 @@ reload_service() {
     start
 }
 
-del_querylog() {
-    local btarget
-    local wtarget
-    btarget=$(ls "$backupwdpath/data" | grep -F "querylog.json" | sort -r | head -n 1)
-    wtarget=$(ls "$workdir/data" | grep -F "querylog.json" | sort -r | head -n 1)
-    if [ "$btarget"x = "$wtarget"x ]; then
-        [ -z "$btarget" ] && return 1
-        rm -f "$workdir/data/$wtarget"
-        rm -f "$backupwdpath/data/$btarget"
-        return 0
-    fi
-    if [ "$btarget" \> "$wtarget" ]; then
-        rm -f "$backupwdpath/data/$btarget"
-        return 0
-    else
-        rm -f "$workdir/data/$wtarget"
-        return 0
-    fi
-}
-
 stop_service() {
     config_load "${CONFIGURATION}"
     _do_redirect 0
-    do_crontab
-    if [ "$1" != "nobackup" ]; then
-        config_get backupfile $CONFIGURATION backupfile "0"
-        [ -n "$backupfile" ] && [ "$backupfile" != "0" ] && backup
-    fi
     echo "AdGuardHome service disabled"
     touch /var/run/AdGserverdis
 }
@@ -516,67 +446,4 @@ stop_service() {
 boot() {
     rc_procd boot_service "$@"
     eval "type service_started" 2>/dev/null >/dev/null && service_started
-}
-
-test_crontab() {
-    config_load "${CONFIGURATION}"
-    do_crontab
-}
-
-do_crontab() {
-    config_get_bool enabled $CONFIGURATION enabled 0
-    config_get crontab $CONFIGURATION crontab ""
-    local findstr default cronenable cronreload=0
-
-    findstr="/usr/share/AdGuardHome/update_core.sh"
-    default="30 3 * * * /usr/share/AdGuardHome/update_core.sh 2>&1"
-    [ "$enabled" = "0" ] || [ "${crontab//autoupdate/}" = "$crontab" ] && cronenable=0 || cronenable=1
-    crontab_editor
-
-    findstr="/usr/share/AdGuardHome/tailto.sh [0-9]* \$(uci get AdGuardHome.AdGuardHome.workdir)/data/querylog.json"
-    default="0 * * * * /usr/share/AdGuardHome/tailto.sh 2000 \$(uci get AdGuardHome.AdGuardHome.workdir)/data/querylog.json"
-    [ "$enabled" = "0" ] || [ "${crontab//cutquerylog/}" = "$crontab" ] && cronenable=0 || cronenable=1
-    crontab_editor
-
-    config_get logfile $CONFIGURATION logfile ""
-    findstr="/usr/share/AdGuardHome/tailto.sh [0-9]* \$(uci get AdGuardHome.AdGuardHome.logfile)"
-    default="30 3 * * * /usr/share/AdGuardHome/tailto.sh 2000 \$(uci get AdGuardHome.AdGuardHome.logfile)"
-    [ "$logfile" = "syslog" ] || [ -z "$logfile" ] || [ "$enabled" = "0" ] || [ "${crontab//cutruntimelog/}" = "$crontab" ] && cronenable=0 || cronenable=1
-    crontab_editor
-
-    findstr="/usr/share/AdGuardHome/addhost.sh"
-    default="0 * * * * /usr/share/AdGuardHome/addhost.sh"
-    [ "$enabled" = "0" ] || [ "${crontab//autohost/}" = "$crontab" ] && cronenable=0 || cronenable=1
-    crontab_editor
-    [ "$cronenable" = "0" ] && /usr/share/AdGuardHome/addhost.sh "del" "noreload" || /usr/share/AdGuardHome/addhost.sh "" "noreload"
-
-    findstr="/usr/share/AdGuardHome/gfw2adg.sh"
-    default="30 3 * * * /usr/share/AdGuardHome/gfw2adg.sh"
-    [ "$enabled" = "0" ] || [ "${crontab//autogfw/}" = "$crontab" ] && cronenable=0 || cronenable=1
-    crontab_editor
-    [ "$cronreload" -gt 0 ] && /etc/init.d/cron restart
-}
-
-crontab_editor() {
-    local line
-    line="$(grep "$findstr" $CRON_FILE 2>/dev/null)"
-
-    if [ "${line:0:1}" != "#" ]; then
-        if [ "$cronenable" -eq 1 ]; then
-            if [ -z "$line" ]; then
-                echo "$default" >> $CRON_FILE
-                cronreload=$((cronreload+1))
-            fi
-        elif [ -n "$line" ]; then
-            sed -i "\,$findstr,d" $CRON_FILE
-            echo "#$line" >> $CRON_FILE
-            cronreload=$((cronreload+1))
-        fi
-    else
-        if [ "$cronenable" -eq 1 ]; then
-            sed -i "\,$findstr,d" $CRON_FILE
-            echo "${line:1}" >> $CRON_FILE
-            cronreload=$((cronreload+1))
-        fi
-    fi
 }
