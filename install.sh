@@ -20,6 +20,10 @@ uclient-fetch -qO /tmp/agh.apk "$URL"
 
 echo "Installing..."
 apk add --allow-untrusted /tmp/agh.apk
-
 rm -f /tmp/agh.apk
-echo "Done!"
+
+echo "Refreshing LuCI..."
+rm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>/dev/null
+/etc/init.d/rpcd reload >/dev/null 2>&1
+
+echo "Done."
