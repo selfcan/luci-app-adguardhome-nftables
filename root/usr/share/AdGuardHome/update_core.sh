@@ -12,18 +12,23 @@ enabled=$(uci get AdGuardHome.AdGuardHome.enabled 2>/dev/null)
 core_api_url="https://api.github.com/repos/AdguardTeam/AdGuardHome/releases/latest"
 
 Check_Task(){
-	running_tasks="$( (ps w 2>/dev/null || ps 2>/dev/null) | grep -v grep | grep -c "update_core.sh" )"
-	case "$running_tasks" in
-		''|*[!0-9]*) running_tasks=0 ;;
-	esac
+	running_tasks=$(pgrep -f "update_core.sh" 2>/dev/null | grep -v "^$$\$" | wc -l)
+	running_tasks=${running_tasks:-0}
+	
 	case $1 in
 	force)
 		printf "%s\n" "执行: 强制更新核心"
-		printf "%s\n" "清除 ${running_tasks} 个进程 ..."
-		pkill -9 -f "update_core.sh" 2>/dev/null || killall -9 update_core.sh 2>/dev/null
+		if [ "$running_tasks" -gt 0 ]; then
+			printf "%s\n" "清除 ${running_tasks} 个进程 ..."
+			pkill -9 -f "update_core.sh" 2>/dev/null
+			sleep 1
+		fi
 	;;
 	*)
-		[ "$running_tasks" -gt 2 ] && printf "%s\n" "已经有 ${running_tasks} 个任务正在运行, 请等待其执行结束或将其强行停止!" && EXIT 2
+		if [ "$running_tasks" -gt 1 ]; then
+			printf "%s\n" "已经有更新任务正在运行, 请等待其执行结束或点击强制更新!"
+			EXIT 2
+		fi
 	;;
 	esac
 }
