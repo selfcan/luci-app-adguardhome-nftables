@@ -6,6 +6,13 @@
 'require fs';
 'require uci';
 
+var callCoreInfo = rpc.declare({
+	object: 'luci.adguardhome',
+	method: 'getCoreInfo',
+	expect: { '': {} },
+	reject: true
+});
+
 var callServiceList = rpc.declare({
 	object: 'service',
 	method: 'list',
@@ -27,7 +34,11 @@ function coreIsRunning(services, binpath) {
 }
 
 return view.extend({
-	render: function() {
+	load: function() {
+		return callCoreInfo().catch(function() { return null; });
+	},
+
+	render: function(coreInfo) {
 		let m, s, o;
 
 		m = new form.Map('AdGuardHome');
@@ -131,9 +142,11 @@ return view.extend({
 				'border:1px solid;border-radius:999px;font-weight:600;line-height:1.4;';
 			var serviceBadge = E('span', { 'style': badgeStyle }, _('Collecting data...'));
 			var redirectBadge = E('span', { 'style': badgeStyle }, _('Collecting data...'));
+			var coreBadge = E('span', { 'style': badgeStyle }, _('Collecting data...'));
 			var statusBox = E('div', { 'class': 'cbi-section' }, [
 				E('h3', {}, _('AdGuardHome Status')),
 				E('div', { 'style': 'display:flex;flex-wrap:wrap;gap:0.6em;padding:0.6em 0;' }, [
+					coreBadge,
 					serviceBadge,
 					redirectBadge
 				])
@@ -151,6 +164,17 @@ return view.extend({
 
 			setBadge(serviceBadge, _('Collecting data...'), null);
 			setBadge(redirectBadge, _('Collecting data...'), null);
+			if (coreInfo == null) {
+				setBadge(coreBadge, _('Core') + ': ' + _('Status unavailable'), null);
+			} else if (!coreInfo.core_exists) {
+				setBadge(coreBadge, _('Core') + ': ' + _('no core'), false);
+			} else if (!coreInfo.version) {
+				setBadge(coreBadge, _('Core') + ': ' + _('core error'), false);
+			} else if (!coreInfo.config_exists) {
+				setBadge(coreBadge, _('Core') + ': ' + coreInfo.version + ' (' + _('no config') + ')', false);
+			} else {
+				setBadge(coreBadge, _('Core') + ': ' + coreInfo.version, true);
+			}
 			node.insertBefore(statusBox, node.firstChild);
 
 			var portInput = node.querySelector('[data-name="httpport"] input');
