@@ -13,6 +13,21 @@ var callCoreInfo = rpc.declare({
 	reject: true
 });
 
+var callCoreUpdate = rpc.declare({
+	object: 'luci.adguardhome',
+	method: 'getCoreUpdate',
+	expect: { '': {} },
+	reject: true
+});
+
+var callStartCoreUpdate = rpc.declare({
+	object: 'luci.adguardhome',
+	method: 'startCoreUpdate',
+	params: [ 'force' ],
+	expect: { '': {} },
+	reject: true
+});
+
 var callServiceList = rpc.declare({
 	object: 'service',
 	method: 'list',
@@ -164,18 +179,111 @@ return view.extend({
 
 			setBadge(serviceBadge, _('Collecting data...'), null);
 			setBadge(redirectBadge, _('Collecting data...'), null);
-			if (coreInfo == null) {
-				setBadge(coreBadge, _('Core') + ': ' + _('Status unavailable'), null);
-			} else if (!coreInfo.core_exists) {
-				setBadge(coreBadge, _('Core') + ': ' + _('no core'), false);
-			} else if (!coreInfo.version) {
-				setBadge(coreBadge, _('Core') + ': ' + _('core error'), false);
-			} else if (!coreInfo.config_exists) {
-				setBadge(coreBadge, _('Core') + ': ' + coreInfo.version + ' (' + _('no config') + ')', false);
-			} else {
-				setBadge(coreBadge, _('Core') + ': ' + coreInfo.version, true);
+			function showCoreInfo(info) {
+				if (info == null)
+					setBadge(coreBadge, _('Core') + ': ' + _('Status unavailable'), null);
+				else if (!info.core_exists)
+					setBadge(coreBadge, _('Core') + ': ' + _('no core'), false);
+				else if (!info.version)
+					setBadge(coreBadge, _('Core') + ': ' + _('core error'), false);
+				else if (!info.config_exists)
+					setBadge(coreBadge, _('Core') + ': ' + info.version + ' (' + _('no config') + ')', false);
+				else
+					setBadge(coreBadge, _('Core') + ': ' + info.version, true);
 			}
+			showCoreInfo(coreInfo);
+
+			var updateButton = E('button', {
+				'class': 'btn cbi-button cbi-button-apply', 'type': 'button'
+			}, _('Update core version'));
+			var forceButton = E('button', {
+				'class': 'btn cbi-button', 'type': 'button', 'style': 'margin-left:0.6em;'
+			}, _('Force update'));
+			var updateMessage = E('span', { 'style': 'margin-left:0.8em;' }, '');
+			var reverseLog = E('input', { 'type': 'checkbox' });
+			var updateLog = E('textarea', {
+				'class': 'cbi-input-textarea', 'rows': 8, 'readonly': 'readonly',
+				'style': 'display:none;width:100%;margin-top:0.6em;box-sizing:border-box;'
+			});
+			var logOptions = E('label', { 'style': 'display:none;margin-top:0.6em;' }, [
+				reverseLog, ' ' + _('reverse')
+			]);
+			var updatePanel = E('div', { 'class': 'cbi-section' }, [
+				E('h3', {}, _('Upgrade Core')),
+				E('div', { 'style': 'padding:0.6em 0;' }, [updateButton, forceButton, updateMessage]),
+				logOptions, updateLog
+			]);
+			var lastLog = '';
+			var startingAt = 0;
+			var activeUpdate = false;
+			var updateFinishedHere = false;
+
+			function showLog() {
+				updateLog.value = reverseLog.checked ? lastLog.split('\n').reverse().join('\n') : lastLog;
+			}
+			reverseLog.addEventListener('change', showLog);
+
+			function showUpdateStatus(result) {
+				var state = result.state || 'idle';
+				if (startingAt && state === 'idle' && Date.now() - startingAt < 10000)
+					return;
+				startingAt = 0;
+				if (state === 'running')
+					activeUpdate = true;
+				else if (activeUpdate && (state === 'finished' || state === 'failure')) {
+					activeUpdate = false;
+					updateFinishedHere = true;
+					callCoreInfo().then(showCoreInfo).catch(function() {});
+				}
+
+				updateButton.disabled = forceButton.disabled = state === 'running';
+				if (state === 'running' || updateFinishedHere) {
+					updateMessage.textContent = state === 'running' ? _('Check...') :
+						state === 'finished' ? _('Updated') : _('Update failed');
+					lastLog = result.log || '';
+					logOptions.style.display = updateLog.style.display = lastLog ? 'block' : 'none';
+					showLog();
+				} else {
+					updateMessage.textContent = '';
+					lastLog = '';
+					logOptions.style.display = updateLog.style.display = 'none';
+				}
+			}
+
+			function startUpdate(force) {
+				startingAt = Date.now();
+				activeUpdate = true;
+				updateFinishedHere = false;
+				updateButton.disabled = forceButton.disabled = true;
+				updateMessage.textContent = _('Check...');
+				lastLog = '';
+				showLog();
+				updateLog.style.display = logOptions.style.display = 'none';
+				callStartCoreUpdate(force).then(function(result) {
+					if (!result.started) {
+						startingAt = 0;
+						activeUpdate = false;
+						updateMessage.textContent = _('Update in progress');
+						return;
+					}
+					return callCoreUpdate().then(showUpdateStatus);
+				}).catch(function() {
+					startingAt = 0;
+					activeUpdate = false;
+					updateButton.disabled = forceButton.disabled = false;
+					updateMessage.textContent = _('Unable to start update');
+				});
+			}
+
+			updateButton.addEventListener('click', function() { startUpdate(false); });
+			forceButton.addEventListener('click', function() { startUpdate(true); });
+			poll.add(function() {
+				return callCoreUpdate().then(showUpdateStatus).catch(function() {
+					updateMessage.textContent = _('Update status unavailable');
+				});
+			}, 3);
 			node.insertBefore(statusBox, node.firstChild);
+			statusBox.parentNode.insertBefore(updatePanel, statusBox.nextSibling);
 
 			var portInput = node.querySelector('[data-name="httpport"] input');
 			var portField = node.querySelector('[data-name="httpport"] .cbi-value-field');
