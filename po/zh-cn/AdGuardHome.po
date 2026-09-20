@@ -96,7 +96,7 @@ msgid "Update status unavailable"
 msgstr "更新状态不可用"
 
 msgid "AdGuardHome Web"
-msgstr "AdGuardHome 网页管理"
+msgstr "AdGuardHome 仪表盘"
 
 msgid "Change browser management password"
 msgstr "修改网页登录密码"
