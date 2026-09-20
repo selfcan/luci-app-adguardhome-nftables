@@ -133,11 +133,12 @@ return view.extend({
 			var portInput = node.querySelector('[data-name="httpport"] input');
 			var portField = node.querySelector('[data-name="httpport"] .cbi-value-field');
 			if (portInput && portField) {
-				var webLink = E('a', {
-					'class': 'cbi-button cbi-button-action',
+				var webLink = E('input', {
+					'type': 'button',
+					'style': 'width:210px;border-color:Teal;text-align:center;font-weight:bold;color:#337ab7;background:#ffc800;',
 					'target': '_blank',
-					'rel': 'noopener noreferrer'
-				}, _('Open AdGuardHome Web'));
+					'value': _('AdGuardHome Web')
+				});
 				var linkWrap = E('div', { 'style': 'margin-top:0.6em;' }, webLink);
 				var host = window.location.hostname;
 				if (host.indexOf(':') >= 0 && host.charAt(0) !== '[')
@@ -146,10 +147,10 @@ return view.extend({
 				function updateWebLink() {
 					var port = portInput.value.trim();
 					var valid = /^[0-9]+$/.test(port) && +port >= 1 && +port <= 65535;
-					if (valid)
-						webLink.href = 'http://' + host + ':' + port + '/';
-					else
-						webLink.removeAttribute('href');
+					webLink.value = _('AdGuardHome Web') + ': ' + port;
+					webLink.onclick = valid ? function() {
+						window.open('http://' + host + ':' + port + '/');
+					} : null;
 					webLink.style.display = valid ? 'inline-block' : 'none';
 				}
 
