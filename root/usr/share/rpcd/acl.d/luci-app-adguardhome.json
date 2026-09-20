@@ -7,13 +7,13 @@
 			},
 			"ubus": {
 				"service": [ "list" ],
-				"luci.adguardhome": [ "getCoreInfo", "getCoreUpdate", "getInterfaces" ]
+				"luci.adguardhome": [ "getCoreInfo", "getCoreUpdate", "getInterfaces", "getRuntimeLog" ]
 			},
 			"uci": [ "AdGuardHome" ]
 		},
 		"write": {
 			"ubus": {
-				"luci.adguardhome": [ "startCoreUpdate", "changeWebPassword" ]
+				"luci.adguardhome": [ "startCoreUpdate", "changeWebPassword", "clearRuntimeLog" ]
 			},
 			"uci": [ "AdGuardHome" ]
 		}
