@@ -24,7 +24,7 @@ define Package/luci-app-adguardhome
 	TITLE:=LuCI app for AdGuardHome
 	PKG_MAINTAINER:=https://github.com/w9315273/luci-app-adguardhome
 	PKGARCH:=all
-	DEPENDS:=+luci-compat +rpcd-mod-ucode +uclient-fetch +tar
+	DEPENDS:=+rpcd-mod-ucode +uclient-fetch +tar
 endef
 
 define Package/luci-app-adguardhome/description
@@ -43,9 +43,6 @@ define Package/luci-app-adguardhome/conffiles
 endef
 
 define Package/luci-app-adguardhome/install
-	$(INSTALL_DIR) $(1)/usr/lib/lua/luci
-	cp -pR ./luasrc/* $(1)/usr/lib/lua/luci
-
 	cp -pR ./root/* $(1)/
 
 	$(INSTALL_DATA) ./root/usr/share/AdGuardHome/adguardhome.nft.tpl \
