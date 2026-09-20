@@ -7,11 +7,7 @@ return view.extend({
         render: function() {
                 let m, s, o;
 
-                m = new form.Map(
-                        'AdGuardHome',
-                        _('AdGuard Home JS'),
-                        _('Free and open source, powerful network-wide ads & trackers blocking DNS server.')
-                );
+                m = new form.Map('AdGuardHome');
 
                 s = m.section(
                         form.TypedSection,
@@ -127,28 +123,78 @@ return view.extend({
                 o.rmempty = true;
 
                 return m.render().then(function(node) {
-                        var statusText = E('p', {}, _('Collecting data...'));
+                        var badgeStyle = 'display:inline-flex;align-items:center;padding:0.4em 0.8em;' +
+                                'border:1px solid;border-radius:999px;font-weight:600;line-height:1.4;';
+                        var serviceBadge = E('span', { 'style': badgeStyle }, _('Collecting data...'));
+                        var redirectBadge = E('span', { 'style': badgeStyle }, _('Collecting data...'));
                         var statusBox = E('div', { 'class': 'cbi-section' }, [
                                 E('h3', {}, _('AdGuardHome Status')),
-                                statusText
+                                E('div', { 'style': 'display:flex;flex-wrap:wrap;gap:0.6em;' }, [
+                                        serviceBadge,
+                                        redirectBadge
+                                ])
                         ]);
 
+                        function setBadge(badge, label, state) {
+                                badge.textContent = label;
+                                badge.style.backgroundColor = state === true ? '#dcfce7' :
+                                        state === false ? '#fee2e2' : '#e5e7eb';
+                                badge.style.color = state === true ? '#14532d' :
+                                        state === false ? '#7f1d1d' : '#374151';
+                                badge.style.borderColor = state === true ? '#86efac' :
+                                        state === false ? '#fca5a5' : '#d1d5db';
+                        }
+
+                        setBadge(serviceBadge, _('Collecting data...'), null);
+                        setBadge(redirectBadge, _('Collecting data...'), null);
                         node.insertBefore(statusBox, node.firstChild);
+
+                        var portInput = node.querySelector('[data-name="httpport"] input');
+                        var portField = node.querySelector('[data-name="httpport"] .cbi-value-field');
+                        if (portInput && portField) {
+                                var webLink = E('a', {
+                                        'class': 'cbi-button cbi-button-action',
+                                        'target': '_blank',
+                                        'rel': 'noopener noreferrer'
+                                }, _('Open AdGuardHome Web'));
+                                var linkWrap = E('div', { 'style': 'margin-top:0.6em;' }, webLink);
+                                var host = window.location.hostname;
+                                if (host.indexOf(':') >= 0 && host.charAt(0) !== '[')
+                                        host = '[' + host + ']';
+
+                                function updateWebLink() {
+                                        var port = portInput.value.trim();
+                                        var valid = /^[0-9]+$/.test(port) && +port >= 1 && +port <= 65535;
+                                        if (valid)
+                                                webLink.href = 'http://' + host + ':' + port + '/';
+                                        else
+                                                webLink.removeAttribute('href');
+                                        webLink.style.display = valid ? 'inline-block' : 'none';
+                                }
+
+                                portField.appendChild(linkWrap);
+                                portInput.addEventListener('input', updateWebLink);
+                                updateWebLink();
+                        }
 
                         request.poll.add(
                                 3,
                                 L.url('admin', 'services', 'AdGuardHome', 'status'),
                                 {},
                                 function(response, data) {
-                                        if (!data || typeof data.running !== 'boolean') {
-                                                statusText.textContent = _('Status unavailable');
+                                        if (!data || typeof data.running !== 'boolean' ||
+                                            typeof data.redirect !== 'boolean') {
+                                                setBadge(serviceBadge, _('Status unavailable'), null);
+                                                setBadge(redirectBadge, _('Status unavailable'), null);
                                                 return;
                                         }
 
-                                        statusText.textContent =
-                                                (data.running ? _('Running') : _('Not running')) +
-                                                ' · ' +
-                                                (data.redirect ? _('Redirected') : _('Not redirected'));
+                                        setBadge(serviceBadge,
+                                                'AdGuardHome: ' + (data.running ? _('RUNNING') : _('NOT RUNNING')),
+                                                data.running);
+                                        setBadge(redirectBadge,
+                                                _('Redirect') + ': ' + (data.redirect ? _('Redirected') : _('Not redirect')),
+                                                data.redirect);
                                 }
                         );
 
