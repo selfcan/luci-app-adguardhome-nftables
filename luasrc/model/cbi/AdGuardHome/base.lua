@@ -9,7 +9,6 @@ local binpath = uci:get("AdGuardHome", "AdGuardHome", "binpath") or "/usr/bin/Ad
 httpport=uci:get("AdGuardHome","AdGuardHome","httpport") or "3000"
 m = Map("AdGuardHome", "AdGuard Home")
 m.description = translate("Free and open source, powerful network-wide ads & trackers blocking DNS server.")
-m:section(SimpleSection).template  = "AdGuardHome/AdGuardHome_status"
 
 s = m:section(TypedSection, "AdGuardHome")
 s.anonymous=true
