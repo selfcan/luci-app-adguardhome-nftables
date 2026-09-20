@@ -158,15 +158,6 @@ o.default     = ""
 o.datatype    = "string"
 o.template = "AdGuardHome/AdGuardHome_chpass"
 o.optional = true
-o = s:option(MultiValue, "upprotect", translate("Keep files when system upgrade"))
-o:value("$binpath",translate("core bin"))
-o:value("$configpath",translate("config file"))
-o.widget = "checkbox"
-o.default = nil
-o.optional=true
-o = s:option(Flag, "waitonboot", translate("On boot when network ok restart"))
-o.default = 1
-o.optional = true
 
 function m.on_commit(map)
 	if (fs.access("/var/run/AdGserverdis")) then
