@@ -110,7 +110,7 @@ return view.extend({
 			var redirectBadge = E('span', { 'style': badgeStyle }, _('Collecting data...'));
 			var statusBox = E('div', { 'class': 'cbi-section' }, [
 				E('h3', {}, _('AdGuardHome Status')),
-				E('div', { 'style': 'display:flex;flex-wrap:wrap;gap:0.6em;' }, [
+				E('div', { 'style': 'display:flex;flex-wrap:wrap;gap:0.6em;padding:0.6em 0;' }, [
 					serviceBadge,
 					redirectBadge
 				])
