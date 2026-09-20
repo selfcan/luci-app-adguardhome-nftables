@@ -6,7 +6,8 @@
 				"/var/run/AdGredir": [ "read" ]
 			},
 			"ubus": {
-				"service": [ "list" ]
+				"service": [ "list" ],
+				"luci.adguardhome": [ "getCoreInfo" ]
 			},
 			"uci": [ "AdGuardHome" ]
 		},
