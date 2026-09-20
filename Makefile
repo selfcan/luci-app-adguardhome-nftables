@@ -24,7 +24,7 @@ define Package/luci-app-adguardhome
 	TITLE:=LuCI app for AdGuardHome
 	PKG_MAINTAINER:=https://github.com/w9315273/luci-app-adguardhome
 	PKGARCH:=all
-	DEPENDS:=+luci-compat +uclient-fetch +tar
+	DEPENDS:=+luci-compat +rpcd-mod-ucode +uclient-fetch +tar
 endef
 
 define Package/luci-app-adguardhome/description
