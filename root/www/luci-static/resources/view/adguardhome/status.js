@@ -20,6 +20,17 @@ var callServiceList = rpc.declare({
 	reject: true
 });
 
+var loadConfigPromise;
+
+function getConfiguredBinPath() {
+	if (!loadConfigPromise)
+		loadConfigPromise = uci.load('AdGuardHome').catch(function() { return null; });
+
+	return loadConfigPromise.then(function() {
+		return uci.get('AdGuardHome', 'AdGuardHome', 'binpath') || '/usr/bin/AdGuardHome/AdGuardHome';
+	});
+}
+
 function coreIsRunning(services, binpath) {
 	var instances = services.AdGuardHome && services.AdGuardHome.instances;
 	if (!instances)
@@ -68,18 +79,17 @@ return baseclass.extend({
 
 		refreshCore();
 		poll.add(function() {
-			var binpath = uci.get('AdGuardHome', 'AdGuardHome', 'binpath') || '/usr/bin/AdGuardHome/AdGuardHome';
 			var redirectFlag = fs.read('/var/run/AdGredir').catch(function(error) {
 				if (error.name === 'NotFoundError')
 					return '';
 				throw error;
 			});
 
-			return Promise.all([callServiceList('AdGuardHome', true), redirectFlag]).then(function(results) {
-				setBadge(serviceBadge, 'AdGuardHome: ' + (coreIsRunning(results[0], binpath) ? _('RUNNING') : _('NOT RUNNING')),
-					coreIsRunning(results[0], binpath));
-				setBadge(redirectBadge, _('Redirect') + ': ' + (results[1].trim() === '1' ? _('Redirected') : _('Not redirect')),
-					results[1].trim() === '1');
+			return Promise.all([getConfiguredBinPath(), callServiceList('AdGuardHome', true), redirectFlag]).then(function(results) {
+				var isRunning = coreIsRunning(results[1], results[0]);
+				setBadge(serviceBadge, 'AdGuardHome: ' + (isRunning ? _('RUNNING') : _('NOT RUNNING')), isRunning);
+				setBadge(redirectBadge, _('Redirect') + ': ' + (results[2].trim() === '1' ? _('Redirected') : _('Not redirect')),
+					results[2].trim() === '1');
 			}).catch(function() {
 				setBadge(serviceBadge, _('Status unavailable'), null);
 				setBadge(redirectBadge, _('Status unavailable'), null);
