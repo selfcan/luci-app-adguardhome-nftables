@@ -1,7 +1,7 @@
 #!/usr/bin/ucode
 'use strict';
 
-import { stat, popen, readfile, unlink } from 'fs';
+import { stat, popen, readfile, unlink, lsdir } from 'fs';
 import { cursor } from 'uci';
 
 function shellQuote(value) {
@@ -10,6 +10,11 @@ function shellQuote(value) {
 
 return {
 	'luci.adguardhome': {
+		getInterfaces: {
+			call: function() {
+				return { interfaces: lsdir('/sys/class/net') || [] };
+			}
+		},
 		getCoreInfo: {
 			call: function() {
 				const conf = cursor();
