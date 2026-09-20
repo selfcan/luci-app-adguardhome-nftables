@@ -18,7 +18,41 @@ var callSetManualConfig = rpc.declare({
 	reject: true
 });
 
+var callChangeWebPassword = rpc.declare({
+	object: 'luci.adguardhome',
+	method: 'changeWebPassword',
+	params: [ 'hash' ],
+	expect: { '': {} },
+	reject: true
+});
+
 var codeMirrorLoader;
+var bcryptLoader;
+
+function loadBcrypt() {
+	if (window.TwinBcrypt)
+		return Promise.resolve(window.TwinBcrypt);
+
+	if (!bcryptLoader) {
+		bcryptLoader = new Promise(function(resolve, reject) {
+			var script = document.createElement('script');
+			script.src = L.resource('twin-bcrypt.min.js');
+			script.onload = function() {
+				if (window.TwinBcrypt)
+					resolve(window.TwinBcrypt);
+				else
+					reject(new Error('bcrypt unavailable'));
+			};
+			script.onerror = reject;
+			document.head.appendChild(script);
+		}).catch(function(error) {
+			bcryptLoader = null;
+			throw error;
+		});
+	}
+
+	return bcryptLoader;
+}
 
 function loadCodeMirror() {
 	if (window.CodeMirror)
@@ -82,6 +116,25 @@ return view.extend({
 		var saveButton = E('button', {
 			'class': 'btn cbi-button cbi-button-apply', 'type': 'button', 'style': 'margin-left:0.6em;'
 		}, _('Save & Apply'));
+		var passwordInput = E('input', {
+			'class': 'cbi-input-password', 'type': 'password',
+			'autocomplete': 'new-password', 'spellcheck': 'false'
+		});
+		var passwordButton = E('button', {
+			'class': 'btn cbi-button cbi-button-apply', 'type': 'button'
+		}, _('Change password'));
+		var passwordMessage = E('span', { 'style': 'margin-left:0.8em;' }, '');
+		var passwordPanel = E('div', { 'class': 'cbi-section' }, [
+			E('h3', {}, _('Change browser management password')),
+			E('div', { 'class': 'cbi-value', 'style': 'padding:0.6em 0;' }, [
+				E('label', { 'class': 'cbi-value-title' }, _('New password')),
+				E('div', { 'class': 'cbi-value-field' }, [
+					passwordInput,
+					E('span', { 'style': 'margin-left:0.6em;' }, passwordButton),
+					passwordMessage
+				])
+			])
+		]);
 
 		function showConfig() {
 			var content = showingTemplate ? config.template : config.content;
@@ -127,6 +180,30 @@ return view.extend({
 				saveButton.disabled = false;
 			});
 		});
+		passwordButton.addEventListener('click', function() {
+			var password = passwordInput.value;
+			if (!password) {
+				passwordMessage.textContent = _('New password') + ' ' + _('is empty');
+				return;
+			}
+
+			passwordButton.disabled = true;
+			passwordMessage.textContent = _('Changing password...');
+			loadBcrypt().then(function(bcrypt) {
+				var hash = bcrypt.hashSync(password);
+				password = null;
+				passwordInput.value = '';
+				return callChangeWebPassword(hash);
+			}).then(function(result) {
+				if (!result.changed)
+					throw new Error(result.reason || 'change failed');
+				passwordMessage.textContent = _('Password changed');
+			}).catch(function() {
+				passwordMessage.textContent = _('Password change failed');
+			}).then(function() {
+				passwordButton.disabled = false;
+			});
+		});
 		showConfig();
 
 		var page = E('div', {}, [
@@ -136,7 +213,8 @@ return view.extend({
 					templateButton, reloadButton, saveButton, message
 				]),
 				editorWrap
-			])
+			]),
+			passwordPanel
 		]);
 		loadCodeMirror().then(function(CodeMirror) {
 			editor = CodeMirror.fromTextArea(configArea, {
