@@ -79,14 +79,16 @@ jobs:
           make package/${PKG_DIR_NAME}/compile -j"$(nproc)" V=sc
 
       - name: 上传产物
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pkg-${{ github.ref_name }}
           path: _sdk/**/bin/packages/**/${{ env.PKG_DIR_NAME }}*
           if-no-files-found: error
 
       - name: 发布到 Releases
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
+          prerelease: ${{ startsWith(github.ref_name, 'dev-') }}
+          make_latest: ${{ startsWith(github.ref_name, 'dev-') && 'false' || 'true' }}
           files: _sdk/**/bin/packages/**/${{ env.PKG_DIR_NAME }}*
