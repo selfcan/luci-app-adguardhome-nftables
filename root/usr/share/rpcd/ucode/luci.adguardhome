@@ -1,7 +1,7 @@
 #!/usr/bin/ucode
 'use strict';
 
-import { stat, popen } from 'fs';
+import { stat, popen, readfile, unlink } from 'fs';
 import { cursor } from 'uci';
 
 function shellQuote(value) {
@@ -35,6 +35,34 @@ return {
 
 				conf.unload('AdGuardHome');
 				return result;
+			}
+		},
+		getCoreUpdate: {
+			call: function() {
+				const running = stat('/var/run/update_core') != null;
+				const failed = stat('/var/run/update_core_error') != null;
+				const log = readfile('/tmp/AdGuardHome_update.log', 131072) || '';
+
+				return {
+					state: running ? 'running' : failed ? 'failure' : log ? 'finished' : 'idle',
+					log: log
+				};
+			}
+		},
+		startCoreUpdate: {
+			args: { force: false },
+			call: function(request) {
+				if (stat('/var/run/update_core') != null)
+					return { started: false, reason: 'busy' };
+
+				unlink('/var/run/update_core_error');
+				unlink('/tmp/AdGuardHome_update.log');
+
+				const command = request.args.force
+					? '/bin/sh /usr/share/AdGuardHome/update_core.sh force >/tmp/AdGuardHome_update.log 2>&1 </dev/null &'
+					: '/bin/sh /usr/share/AdGuardHome/update_core.sh >/tmp/AdGuardHome_update.log 2>&1 </dev/null &';
+
+				return { started: system(['/bin/sh', '-c', command], 3000) == 0 };
 			}
 		}
 	}
