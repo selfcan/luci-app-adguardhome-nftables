@@ -9,6 +9,11 @@ TAG=$(uclient-fetch -qO- "https://api.github.com/repos/${REPO}/releases/latest" 
 
 [ -n "$TAG" ] || { echo "ERROR: Failed to get latest version"; exit 1; }
 
+case "$TAG" in
+  *-*) ;;
+  *) echo "ERROR: Unexpected tag format: $TAG"; exit 1 ;;
+esac
+
 VERSION=${TAG#v}
 VERSION=${VERSION%-*}-r${VERSION##*-}
 
@@ -16,11 +21,11 @@ URL="https://github.com/${REPO}/releases/download/${TAG}/luci-app-adguardhome-${
 
 echo "Version: $VERSION"
 echo "Downloading..."
+trap 'rm -f /tmp/agh.apk' EXIT
 uclient-fetch -qO /tmp/agh.apk "$URL"
 
 echo "Installing..."
 apk add --allow-untrusted /tmp/agh.apk
-rm -f /tmp/agh.apk
 
 echo "Refreshing LuCI..."
 rm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>/dev/null
