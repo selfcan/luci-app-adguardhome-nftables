@@ -7,11 +7,14 @@
 			},
 			"ubus": {
 				"service": [ "list" ],
-				"luci.adguardhome": [ "getCoreInfo" ]
+				"luci.adguardhome": [ "getCoreInfo", "getCoreUpdate" ]
 			},
 			"uci": [ "AdGuardHome" ]
 		},
 		"write": {
+			"ubus": {
+				"luci.adguardhome": [ "startCoreUpdate" ]
+			},
 			"uci": [ "AdGuardHome" ]
 		}
 	}
