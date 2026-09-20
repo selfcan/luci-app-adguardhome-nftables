@@ -83,11 +83,26 @@ jobs:
           make defconfig
           if ! grep -Eq '^CONFIG_PACKAGE_luci-app-adguardhome=(y|m)$' .config; then
             echo '::error::luci-app-adguardhome was not enabled after make defconfig'
-            grep -n 'luci-app-adguardhome' .config tmp/.config-package.in || true
+            grep -n 'luci-app-adguardhome' .config || true
+            sed -n '/^[[:space:]]*config PACKAGE_luci-app-adguardhome$/,/^[[:space:]]*help/p' tmp/.config-package.in
             exit 1
           fi
 
           make package/compile -j1 V=s
+
+      - name: 上传失败诊断
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-build-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          include-hidden-files: true
+          if-no-files-found: warn
+          path: |
+            _sdk/**/.config
+            _sdk/**/Config.in
+            _sdk/**/Config-build.in
+            _sdk/**/tmp/.config-package.in
+            _sdk/**/tmp/.packageinfo
 
       - name: 上传产物
         uses: actions/upload-artifact@v4
