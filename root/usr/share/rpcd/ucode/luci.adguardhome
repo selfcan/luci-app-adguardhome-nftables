@@ -69,6 +69,32 @@ return {
 
 				return { started: system(['/bin/sh', '-c', command], 3000) == 0 };
 			}
+		},
+		changeWebPassword: {
+			args: { hash: '' },
+			call: function(request) {
+				const hash = request.args.hash;
+				if (!match(hash, /^\$2[aby]\$(0[4-9]|[12][0-9]|3[01])\$[.\/A-Za-z0-9]{53}$/))
+					return { changed: false, reason: 'invalid_hash' };
+
+				const conf = cursor();
+				const configpath = conf.get('AdGuardHome', 'AdGuardHome', 'configpath') ||
+					'/etc/AdGuardHome.yaml';
+				if (stat(configpath)?.type != 'file')
+					return { changed: false, reason: 'no_config' };
+
+				if (!conf.set('AdGuardHome', 'AdGuardHome', 'hashpass', hash) ||
+					!conf.commit('AdGuardHome'))
+					return { changed: false, reason: 'save_failed' };
+				conf.unload('AdGuardHome');
+
+				if (system(['/etc/init.d/AdGuardHome', 'reload'], 30000) != 0)
+					return { changed: false, reason: 'reload_failed' };
+
+				if (index(readfile(configpath) || '', hash) < 0)
+					return { changed: false, reason: 'verify_failed' };
+				return { changed: true };
+			}
 		}
 	}
 };
