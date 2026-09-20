@@ -1,0 +1,41 @@
+#!/usr/bin/ucode
+'use strict';
+
+import { stat, popen } from 'fs';
+import { cursor } from 'uci';
+
+function shellQuote(value) {
+	return "'" + replace(value, /'/g, "'\\''") + "'";
+}
+
+return {
+	'luci.adguardhome': {
+		getCoreInfo: {
+			call: function() {
+				const conf = cursor();
+				const binpath = conf.get('AdGuardHome', 'AdGuardHome', 'binpath') ||
+					'/usr/bin/AdGuardHome/AdGuardHome';
+				const configpath = conf.get('AdGuardHome', 'AdGuardHome', 'configpath') ||
+					'/etc/AdGuardHome.yaml';
+				const result = {
+					core_exists: stat(binpath)?.type == 'file',
+					config_exists: stat(configpath)?.type == 'file',
+					version: null
+				};
+
+				if (result.core_exists) {
+					// Pass the configured path as a positional argument; capture both output streams.
+					const proc = popen('/bin/sh -c \'"$1" --version 2>&1\' sh ' + shellQuote(binpath), 'r');
+					if (proc) {
+						const output = proc.read('all') || '';
+						proc.close();
+						result.version = match(output, /version ([^, \t\r\n]+)/)?.[1] || null;
+					}
+				}
+
+				conf.unload('AdGuardHome');
+				return result;
+			}
+		}
+	}
+};
