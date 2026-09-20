@@ -10,7 +10,6 @@ page.acl_depends = { "luci-app-adguardhome" }
     entry({"admin", "services", "AdGuardHome", "base"}, cbi("AdGuardHome/base"),  _("Base Setting"), 1).leaf = true
     entry({"admin", "services", "AdGuardHome", "log"}, form("AdGuardHome/log"), _("Log"), 2).leaf = true
     entry({"admin", "services", "AdGuardHome", "manual"}, cbi("AdGuardHome/manual"), _("Manual Config"), 3).leaf = true
-    entry({"admin", "services", "AdGuardHome", "status"}, call("act_status")).leaf = true
     entry({"admin", "services", "AdGuardHome", "check"}, call("check_update"))
     entry({"admin", "services", "AdGuardHome", "doupdate"}, call("do_update"))
     entry({"admin", "services", "AdGuardHome", "getlog"}, call("get_log"))
@@ -31,14 +30,6 @@ function reload_config()
 	fs.remove("/tmp/AdGuardHometmpconfig.yaml")
 	http.prepare_content("application/json")
 	http.write('')
-end
-function act_status()
-	local e={}
-	local binpath=uci:get("AdGuardHome","AdGuardHome","binpath")
-	e.running=luci.sys.call("pgrep "..binpath.." >/dev/null")==0
-	e.redirect=(fs.readfile("/var/run/AdGredir")=="1")
-	http.prepare_content("application/json")
-	http.write_json(e)
 end
 function do_update()
 	fs.writefile("/var/run/lucilogpos","0")
