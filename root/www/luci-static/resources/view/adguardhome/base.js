@@ -201,7 +201,7 @@ return view.extend({
 			]);
 			var updatePanel = E('div', { 'class': 'cbi-section' }, [
 				E('h3', {}, _('Upgrade Core')),
-				E('div', { 'style': 'padding:0.6em 0;' }, [updateButton, forceButton, updateMessage]),
+				E('div', { 'style': 'padding:0.6em;' }, [updateButton, forceButton, updateMessage]),
 				logOptions, updateLog
 			]);
 			var lastLog = '';

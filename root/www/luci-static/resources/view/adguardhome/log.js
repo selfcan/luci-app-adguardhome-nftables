@@ -119,10 +119,10 @@ return view.extend({
 		var page = E('div', { 'class': 'cbi-map' }, [
 			sharedStatus.node,
 			logArea,
-			E('div', { 'style': 'display:flex;align-items:center;padding:0.6em 0;' }, [
+			E('div', { 'style': 'display:flex;align-items:center;padding:0.6em;' }, [
 				reverseLabel, timeLabel
 			]),
-			E('div', { 'style': 'padding:0 0 0.6em;' }, [clearButton, downloadButton, message])
+			E('div', { 'style': 'padding:0 0.6em 0.6em;' }, [clearButton, downloadButton, message])
 		]);
 
 		if (!enabled)

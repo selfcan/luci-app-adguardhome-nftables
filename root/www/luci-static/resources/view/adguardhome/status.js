@@ -39,7 +39,7 @@ return baseclass.extend({
 		var serviceBadge = E('span', { 'style': badgeStyle }, _('Collecting data...'));
 		var redirectBadge = E('span', { 'style': badgeStyle }, _('Collecting data...'));
 		var node = E('div', { 'class': 'cbi-section' }, [
-			E('div', { 'style': 'display:flex;flex-wrap:wrap;gap:0.6em;padding:0.6em 0;' }, [
+			E('div', { 'style': 'display:flex;flex-wrap:wrap;gap:0.6em;padding:0.6em;' }, [
 				coreBadge, serviceBadge, redirectBadge
 			])
 		]);
