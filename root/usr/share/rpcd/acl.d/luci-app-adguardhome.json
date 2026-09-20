@@ -2,6 +2,12 @@
 	"luci-app-adguardhome": {
 		"description": "Grant UCI access for luci-app-adguardhome",
 		"read": {
+			"file": {
+				"/var/run/AdGredir": [ "read" ]
+			},
+			"ubus": {
+				"service": [ "list" ]
+			},
 			"uci": [ "AdGuardHome" ]
 		},
 		"write": {
