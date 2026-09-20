@@ -70,10 +70,16 @@ jobs:
           rsync -a --delete "$GITHUB_WORKSPACE/" "package/${PKG_DIR_NAME}/" \
             --exclude '.git*' --exclude '_sdk'
 
-          ./scripts/feeds update luci
-          ./scripts/feeds install luci-base
+          ./scripts/feeds update -a
+          ./scripts/feeds install luci-base rpcd-mod-ucode uclient-fetch tar
 
-          ./scripts/config -m PACKAGE_luci-app-adguardhome
+          touch .config
+          sed -i -E '/^(# )?CONFIG_(ALL|ALL_KMODS|ALL_NONSHARED|PACKAGE_luci-app-adguardhome)(=| is not set)/d' .config
+          printf '%s\n' \
+            'CONFIG_ALL=n' \
+            'CONFIG_ALL_KMODS=n' \
+            'CONFIG_ALL_NONSHARED=n' \
+            'CONFIG_PACKAGE_luci-app-adguardhome=m' >> .config
           make defconfig
           grep -qx 'CONFIG_PACKAGE_luci-app-adguardhome=m' .config
 
