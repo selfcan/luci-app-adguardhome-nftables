@@ -10,6 +10,60 @@ function shellQuote(value) {
 
 return {
 	'luci.adguardhome': {
+		getManualConfig: {
+			call: function() {
+				const conf = cursor();
+				const configpath = conf.get('AdGuardHome', 'AdGuardHome', 'configpath') ||
+					'/etc/AdGuardHome.yaml';
+				conf.unload('AdGuardHome');
+
+				const template = readfile('/usr/share/AdGuardHome/AdGuardHome_template.yaml') || '';
+				const current = readfile(configpath);
+				if (current != null)
+					return { content: current, template: template, source: 'current' };
+				if (stat(configpath) != null)
+					return { content: '', template: template, source: 'error' };
+				return {
+					content: template,
+					template: template,
+					source: template ? 'template' : 'missing'
+				};
+			}
+		},
+		setManualConfig: {
+			args: { content: '' },
+			call: function(request) {
+				const content = request.args.content;
+				if (content == null)
+					return { saved: false, reason: 'invalid_content' };
+
+				const conf = cursor();
+				const configpath = conf.get('AdGuardHome', 'AdGuardHome', 'configpath') ||
+					'/etc/AdGuardHome.yaml';
+				const binpath = conf.get('AdGuardHome', 'AdGuardHome', 'binpath') ||
+					'/usr/bin/AdGuardHome/AdGuardHome';
+				conf.unload('AdGuardHome');
+
+				const temporaryConfig = '/tmp/AdGuardHometmpconfig.yaml';
+				const validationLog = '/tmp/AdGuardHometest.log';
+				if (writefile(temporaryConfig, replace(content, /\r\n/g, '\n')) == null)
+					return { saved: false, reason: 'write_failed' };
+
+				if (stat(binpath)?.type == 'file') {
+					const valid = system(['/bin/sh', '-c', '"$1" -c "$2" --check-config > "$3" 2>&1',
+						'sh', binpath, temporaryConfig, validationLog], 30000) == 0;
+					if (!valid)
+						return { saved: false, reason: 'validation_failed', log: readfile(validationLog) || '' };
+				}
+
+				if (writefile(configpath, readfile(temporaryConfig) || '') == null)
+					return { saved: false, reason: 'save_failed' };
+				unlink(temporaryConfig);
+				if (system(['/etc/init.d/AdGuardHome', 'reload'], 30000) != 0)
+					return { saved: false, reason: 'reload_failed' };
+				return { saved: true };
+			}
+		},
 		getInterfaces: {
 			call: function() {
 				return { interfaces: lsdir('/sys/class/net') || [] };
