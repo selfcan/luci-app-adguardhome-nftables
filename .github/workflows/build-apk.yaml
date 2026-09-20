@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -79,9 +79,13 @@ jobs:
             'CONFIG_ALL=n' \
             'CONFIG_ALL_KMODS=n' \
             'CONFIG_ALL_NONSHARED=n' \
-            'CONFIG_PACKAGE_luci-app-adguardhome=m' >> .config
+            'CONFIG_PACKAGE_luci-app-adguardhome=y' >> .config
           make defconfig
-          grep -qx 'CONFIG_PACKAGE_luci-app-adguardhome=m' .config
+          if ! grep -Eq '^CONFIG_PACKAGE_luci-app-adguardhome=(y|m)$' .config; then
+            echo '::error::luci-app-adguardhome was not enabled after make defconfig'
+            grep -n 'luci-app-adguardhome' .config tmp/.config-package.in || true
+            exit 1
+          fi
 
           make package/compile -j1 V=s
 
