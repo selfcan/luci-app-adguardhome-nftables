@@ -13,6 +13,13 @@ var callCoreInfo = rpc.declare({
 	reject: true
 });
 
+var callInterfaces = rpc.declare({
+	object: 'luci.adguardhome',
+	method: 'getInterfaces',
+	expect: { '': {} },
+	reject: true
+});
+
 var callCoreUpdate = rpc.declare({
 	object: 'luci.adguardhome',
 	method: 'getCoreUpdate',
@@ -50,11 +57,16 @@ function coreIsRunning(services, binpath) {
 
 return view.extend({
 	load: function() {
-		return callCoreInfo().catch(function() { return null; });
+		return Promise.all([
+			callCoreInfo().catch(function() { return null; }),
+			callInterfaces().catch(function() { return { interfaces: [] }; })
+		]);
 	},
 
-	render: function(coreInfo) {
+	render: function(data) {
 		let m, s, o;
+		var coreInfo = data[0];
+		var interfaces = data[1].interfaces || [];
 
 		m = new form.Map('AdGuardHome');
 
@@ -108,6 +120,9 @@ return view.extend({
 		);
 		o.datatype = 'string';
 		o.rmempty = true;
+		interfaces.filter(function(name) { return name !== 'lo'; }).forEach(function(name) {
+			o.value(name, name);
+		});
 
 		o = s.option(
 			form.Value,
