@@ -66,6 +66,7 @@ set_forward_dnsmasq() {
     uci add_list dhcp.@dnsmasq[0].server="$addr"
     for server in $OLD_SERVER; do
         [ "$server" = "$addr" ] && continue
+        uci add_list dhcp.@dnsmasq[0].server="$server"
     done
     uci delete dhcp.@dnsmasq[0].resolvfile 2>/dev/null
     uci set dhcp.@dnsmasq[0].noresolv=1
