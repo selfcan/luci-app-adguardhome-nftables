@@ -79,7 +79,6 @@ jobs:
             'CONFIG_ALL=n' \
             'CONFIG_ALL_KMODS=n' \
             'CONFIG_ALL_NONSHARED=n' \
-            '# CONFIG_PACKAGE_TAR_XZ is not set' \
             'CONFIG_PACKAGE_luci-app-adguardhome=y' >> .config
           make defconfig
           if ! grep -Eq '^CONFIG_PACKAGE_luci-app-adguardhome=(y|m)$' .config; then
