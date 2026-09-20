@@ -1,7 +1,30 @@
 'use strict';
 'require view';
 'require form';
-'require request';
+'require poll';
+'require rpc';
+'require fs';
+'require uci';
+
+var callServiceList = rpc.declare({
+	object: 'service',
+	method: 'list',
+	params: [ 'name', 'verbose' ],
+	expect: { '': {} },
+	reject: true
+});
+
+function coreIsRunning(services, binpath) {
+	var instances = services.AdGuardHome && services.AdGuardHome.instances;
+	if (!instances)
+		return false;
+
+	return Object.keys(instances).some(function(name) {
+		var instance = instances[name];
+		return instance.running === true && Array.isArray(instance.command) &&
+			instance.command[0] === binpath;
+	});
+}
 
 return view.extend({
 	render: function() {
@@ -159,26 +182,32 @@ return view.extend({
 				updateWebLink();
 			}
 
-			request.poll.add(
-				3,
-				L.url('admin', 'services', 'AdGuardHome', 'status'),
-				{},
-				function(response, data) {
-					if (!data || typeof data.running !== 'boolean' ||
-					    typeof data.redirect !== 'boolean') {
+			poll.add(function() {
+				var binpath = uci.get('AdGuardHome', 'AdGuardHome', 'binpath') ||
+					'/usr/bin/AdGuardHome/AdGuardHome';
+				var redirectFlag = fs.read('/var/run/AdGredir').catch(function(error) {
+					if (error.name === 'NotFoundError')
+						return '';
+					throw error;
+				});
+
+				return Promise.all([callServiceList('AdGuardHome', true), redirectFlag])
+					.then(function(results) {
+						var running = coreIsRunning(results[0], binpath);
+						var redirected = results[1].trim() === '1';
+
+						setBadge(serviceBadge,
+							'AdGuardHome: ' + (running ? _('RUNNING') : _('NOT RUNNING')),
+							running);
+						setBadge(redirectBadge,
+							_('Redirect') + ': ' + (redirected ? _('Redirected') : _('Not redirect')),
+							redirected);
+					})
+					.catch(function() {
 						setBadge(serviceBadge, _('Status unavailable'), null);
 						setBadge(redirectBadge, _('Status unavailable'), null);
-						return;
-					}
-
-					setBadge(serviceBadge,
-						'AdGuardHome: ' + (data.running ? _('RUNNING') : _('NOT RUNNING')),
-						data.running);
-					setBadge(redirectBadge,
-						_('Redirect') + ': ' + (data.redirect ? _('Redirected') : _('Not redirect')),
-						data.redirect);
-				}
-			);
+					});
+			}, 3);
 
 			return node;
 		});
