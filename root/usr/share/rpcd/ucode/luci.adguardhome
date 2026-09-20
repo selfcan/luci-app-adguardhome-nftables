@@ -1,7 +1,7 @@
 #!/usr/bin/ucode
 'use strict';
 
-import { stat, popen, readfile, unlink, lsdir } from 'fs';
+import { stat, popen, readfile, writefile, unlink, lsdir } from 'fs';
 import { cursor } from 'uci';
 
 function shellQuote(value) {
@@ -94,6 +94,50 @@ return {
 				if (index(readfile(configpath) || '', hash) < 0)
 					return { changed: false, reason: 'verify_failed' };
 				return { changed: true };
+			}
+		},
+		getRuntimeLog: {
+			args: { offset: 0 },
+			call: function(request) {
+				const conf = cursor();
+				const logfile = conf.get('AdGuardHome', 'AdGuardHome', 'logfile') || '';
+				conf.unload('AdGuardHome');
+				if (!logfile)
+					return { enabled: false, localtime: false, content: '', offset: 0 };
+
+				let source = logfile;
+				if (logfile == 'syslog') {
+					source = '/tmp/AdGuardHometmp.log';
+					writefile('/var/run/AdGuardHomesyslog', '1');
+					if (stat(source)?.type != 'file')
+						system(['/bin/sh', '-c', '/bin/sh /usr/share/AdGuardHome/getsyslog.sh >/dev/null 2>&1 &'], 3000);
+				}
+
+				const log = readfile(source) || '';
+				const size = length(log);
+				let offset = +request.args.offset || 0;
+				if (offset < 0 || offset > size)
+					offset = 0;
+				const content = substr(log, offset, 2097152);
+
+				return {
+					enabled: true,
+					localtime: logfile != 'syslog',
+					content: content,
+					offset: offset + length(content)
+				};
+			}
+		},
+		clearRuntimeLog: {
+			call: function() {
+				const conf = cursor();
+				const logfile = conf.get('AdGuardHome', 'AdGuardHome', 'logfile') || '';
+				conf.unload('AdGuardHome');
+				if (!logfile)
+					return { cleared: false, reason: 'no_logfile' };
+
+				const source = logfile == 'syslog' ? '/tmp/AdGuardHometmp.log' : logfile;
+				return { cleared: writefile(source, '') != null };
 			}
 		}
 	}
