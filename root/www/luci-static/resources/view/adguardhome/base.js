@@ -3,8 +3,7 @@
 'require form';
 'require poll';
 'require rpc';
-'require fs';
-'require uci';
+'require view/adguardhome/status as status';
 
 var callCoreInfo = rpc.declare({
 	object: 'luci.adguardhome',
@@ -31,14 +30,6 @@ var callStartCoreUpdate = rpc.declare({
 	object: 'luci.adguardhome',
 	method: 'startCoreUpdate',
 	params: [ 'force' ],
-	expect: { '': {} },
-	reject: true
-});
-
-var callServiceList = rpc.declare({
-	object: 'service',
-	method: 'list',
-	params: [ 'name', 'verbose' ],
 	expect: { '': {} },
 	reject: true
 });
@@ -76,18 +67,6 @@ function loadBcrypt() {
 	}
 
 	return bcryptLoader;
-}
-
-function coreIsRunning(services, binpath) {
-	var instances = services.AdGuardHome && services.AdGuardHome.instances;
-	if (!instances)
-		return false;
-
-	return Object.keys(instances).some(function(name) {
-		var instance = instances[name];
-		return instance.running === true && Array.isArray(instance.command) &&
-			instance.command[0] === binpath;
-	});
 }
 
 return view.extend({
@@ -203,45 +182,7 @@ return view.extend({
 		o.rmempty = true;
 
 		return m.render().then(function(node) {
-			var badgeStyle = 'display:inline-flex;align-items:center;padding:0.4em 0.8em;' +
-				'border:1px solid;border-radius:999px;font-weight:600;line-height:1.4;';
-			var serviceBadge = E('span', { 'style': badgeStyle }, _('Collecting data...'));
-			var redirectBadge = E('span', { 'style': badgeStyle }, _('Collecting data...'));
-			var coreBadge = E('span', { 'style': badgeStyle }, _('Collecting data...'));
-			var statusBox = E('div', { 'class': 'cbi-section' }, [
-				E('h3', {}, _('AdGuardHome Status')),
-				E('div', { 'style': 'display:flex;flex-wrap:wrap;gap:0.6em;padding:0.6em 0;' }, [
-					coreBadge,
-					serviceBadge,
-					redirectBadge
-				])
-			]);
-
-			function setBadge(badge, label, state) {
-				badge.textContent = label;
-				badge.style.backgroundColor = state === true ? '#dcfce7' :
-					state === false ? '#fee2e2' : '#e5e7eb';
-				badge.style.color = state === true ? '#14532d' :
-					state === false ? '#7f1d1d' : '#374151';
-				badge.style.borderColor = state === true ? '#86efac' :
-					state === false ? '#fca5a5' : '#d1d5db';
-			}
-
-			setBadge(serviceBadge, _('Collecting data...'), null);
-			setBadge(redirectBadge, _('Collecting data...'), null);
-			function showCoreInfo(info) {
-				if (info == null)
-					setBadge(coreBadge, _('Core') + ': ' + _('Status unavailable'), null);
-				else if (!info.core_exists)
-					setBadge(coreBadge, _('Core') + ': ' + _('no core'), false);
-				else if (!info.version)
-					setBadge(coreBadge, _('Core') + ': ' + _('core error'), false);
-				else if (!info.config_exists)
-					setBadge(coreBadge, _('Core') + ': ' + info.version + ' (' + _('no config') + ')', false);
-				else
-					setBadge(coreBadge, _('Core') + ': ' + info.version, true);
-			}
-			showCoreInfo(coreInfo);
+			var sharedStatus = status.render();
 
 			var updateButton = E('button', {
 				'class': 'btn cbi-button cbi-button-apply', 'type': 'button'
@@ -283,7 +224,7 @@ return view.extend({
 				else if (activeUpdate && (state === 'finished' || state === 'failure')) {
 					activeUpdate = false;
 					updateFinishedHere = true;
-					callCoreInfo().then(showCoreInfo).catch(function() {});
+					sharedStatus.refresh();
 				}
 
 				updateButton.disabled = forceButton.disabled = state === 'running';
@@ -332,8 +273,8 @@ return view.extend({
 					updateMessage.textContent = _('Update status unavailable');
 				});
 			}, 3);
-			node.insertBefore(statusBox, node.firstChild);
-			statusBox.parentNode.insertBefore(updatePanel, statusBox.nextSibling);
+			node.insertBefore(sharedStatus.node, node.firstChild);
+			sharedStatus.node.parentNode.insertBefore(updatePanel, sharedStatus.node.nextSibling);
 
 			var portInput = node.querySelector('[data-name="httpport"] input');
 			var portField = node.querySelector('[data-name="httpport"] .cbi-value-field');
@@ -363,33 +304,6 @@ return view.extend({
 				portInput.addEventListener('input', updateWebLink);
 				updateWebLink();
 			}
-
-			poll.add(function() {
-				var binpath = uci.get('AdGuardHome', 'AdGuardHome', 'binpath') ||
-					'/usr/bin/AdGuardHome/AdGuardHome';
-				var redirectFlag = fs.read('/var/run/AdGredir').catch(function(error) {
-					if (error.name === 'NotFoundError')
-						return '';
-					throw error;
-				});
-
-				return Promise.all([callServiceList('AdGuardHome', true), redirectFlag])
-					.then(function(results) {
-						var running = coreIsRunning(results[0], binpath);
-						var redirected = results[1].trim() === '1';
-
-						setBadge(serviceBadge,
-							'AdGuardHome: ' + (running ? _('RUNNING') : _('NOT RUNNING')),
-							running);
-						setBadge(redirectBadge,
-							_('Redirect') + ': ' + (redirected ? _('Redirected') : _('Not redirect')),
-							redirected);
-					})
-					.catch(function() {
-						setBadge(serviceBadge, _('Status unavailable'), null);
-						setBadge(redirectBadge, _('Status unavailable'), null);
-					});
-			}, 3);
 
 			var passwordInput = E('input', {
 				'class': 'cbi-input-password', 'type': 'password',
