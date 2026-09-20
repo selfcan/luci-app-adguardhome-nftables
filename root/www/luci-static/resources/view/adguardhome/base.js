@@ -1,6 +1,7 @@
 'use strict';
 'require view';
 'require form';
+'require request';
 
 return view.extend({
         render: function() {
@@ -125,6 +126,33 @@ return view.extend({
                 o.default = '1';
                 o.rmempty = true;
 
-                return m.render();
+                return m.render().then(function(node) {
+                        var statusText = E('p', {}, _('Collecting data...'));
+                        var statusBox = E('div', { 'class': 'cbi-section' }, [
+                                E('h3', {}, _('AdGuardHome Status')),
+                                statusText
+                        ]);
+
+                        node.insertBefore(statusBox, node.firstChild);
+
+                        request.poll.add(
+                                3,
+                                L.url('admin', 'services', 'AdGuardHome', 'status'),
+                                {},
+                                function(response, data) {
+                                        if (!data || typeof data.running !== 'boolean') {
+                                                statusText.textContent = _('Status unavailable');
+                                                return;
+                                        }
+
+                                        statusText.textContent =
+                                                (data.running ? _('Running') : _('Not running')) +
+                                                ' · ' +
+                                                (data.redirect ? _('Redirected') : _('Not redirected'));
+                                }
+                        );
+
+                        return node;
+                });
         }
 });
