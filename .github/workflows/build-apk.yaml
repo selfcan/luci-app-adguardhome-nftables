@@ -71,7 +71,7 @@ jobs:
             --exclude '.git*' --exclude '_sdk'
 
           ./scripts/feeds update -a
-          ./scripts/feeds install luci-base rpcd-mod-ucode uclient-fetch tar
+          ./scripts/feeds install luci-base tar
 
           touch .config
           sed -i -E '/^(# )?CONFIG_(ALL|ALL_KMODS|ALL_NONSHARED|PACKAGE_TAR_XZ|PACKAGE_luci-app-adguardhome)(=| is not set)/d' .config
@@ -79,6 +79,7 @@ jobs:
             'CONFIG_ALL=n' \
             'CONFIG_ALL_KMODS=n' \
             'CONFIG_ALL_NONSHARED=n' \
+            '# CONFIG_PACKAGE_TAR_XZ is not set' \
             'CONFIG_PACKAGE_luci-app-adguardhome=y' >> .config
           make defconfig
           if ! grep -Eq '^CONFIG_PACKAGE_luci-app-adguardhome=(y|m)$' .config; then
