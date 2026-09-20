@@ -10,8 +10,6 @@ page.acl_depends = { "luci-app-adguardhome" }
     entry({"admin", "services", "AdGuardHome", "base"}, cbi("AdGuardHome/base"),  _("Base Setting"), 1).leaf = true
     entry({"admin", "services", "AdGuardHome", "log"}, form("AdGuardHome/log"), _("Log"), 2).leaf = true
     entry({"admin", "services", "AdGuardHome", "manual"}, cbi("AdGuardHome/manual"), _("Manual Config"), 3).leaf = true
-    entry({"admin", "services", "AdGuardHome", "check"}, call("check_update"))
-    entry({"admin", "services", "AdGuardHome", "doupdate"}, call("do_update"))
     entry({"admin", "services", "AdGuardHome", "getlog"}, call("get_log"))
     entry({"admin", "services", "AdGuardHome", "dodellog"}, call("do_dellog"))
     entry({"admin", "services", "AdGuardHome", "reloadconfig"}, call("reload_config"))
@@ -30,24 +28,6 @@ function reload_config()
 	fs.remove("/tmp/AdGuardHometmpconfig.yaml")
 	http.prepare_content("application/json")
 	http.write('')
-end
-function do_update()
-	fs.writefile("/var/run/lucilogpos","0")
-	http.prepare_content("application/json")
-	http.write('')
-	local arg
-	if luci.http.formvalue("force") == "1" then
-		arg="force"
-	else
-		arg=""
-	end
-	if arg=="force" then
-			luci.sys.exec("kill $(pgrep /usr/share/AdGuardHome/update_core.sh) ; sh /usr/share/AdGuardHome/update_core.sh "..arg.." >/tmp/AdGuardHome_update.log 2>&1 &")
-	
-
-	else
-		luci.sys.exec("sh /usr/share/AdGuardHome/update_core.sh "..arg.." >/tmp/AdGuardHome_update.log 2>&1 &")
-	end
 end
 function get_log()
 	local logfile=uci:get("AdGuardHome","AdGuardHome","logfile")
@@ -79,19 +59,4 @@ function do_dellog()
 	fs.writefile(logfile,"")
 	http.prepare_content("application/json")
 	http.write('')
-end
-function check_update()
-	http.prepare_content("text/plain; charset=utf-8")
-	local fdp=tonumber(fs.readfile("/var/run/lucilogpos")) or 0
-	local f=io.open("/tmp/AdGuardHome_update.log", "r+")
-	f:seek("set",fdp)
-	local a=f:read(2048000) or ""
-	fdp=f:seek()
-	fs.writefile("/var/run/lucilogpos",tostring(fdp))
-	f:close()
-if fs.access("/var/run/update_core") then
-	http.write(a)
-else
-	http.write(a.."\0")
-end
 end

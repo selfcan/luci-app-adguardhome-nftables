@@ -107,6 +107,27 @@ msgstr "详细日志"
 msgid "Change browser management password"
 msgstr "改变网页登录密码"
 
+msgid "New password"
+msgstr "新密码"
+
+msgid "Confirm password"
+msgstr "确认密码"
+
+msgid "Change password"
+msgstr "修改密码"
+
+msgid "Passwords do not match or are empty"
+msgstr "密码为空或两次输入不一致"
+
+msgid "Changing password..."
+msgstr "正在修改密码..."
+
+msgid "Password changed"
+msgstr "密码已修改"
+
+msgid "Password change failed"
+msgstr "密码修改失败"
+
 msgid "Culculate"
 msgstr "计算"
 ##button change
