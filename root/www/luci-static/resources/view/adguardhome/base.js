@@ -5,13 +5,6 @@
 'require rpc';
 'require view/adguardhome/status as status';
 
-var callCoreInfo = rpc.declare({
-	object: 'luci.adguardhome',
-	method: 'getCoreInfo',
-	expect: { '': {} },
-	reject: true
-});
-
 var callInterfaces = rpc.declare({
 	object: 'luci.adguardhome',
 	method: 'getInterfaces',
@@ -36,16 +29,12 @@ var callStartCoreUpdate = rpc.declare({
 
 return view.extend({
 	load: function() {
-		return Promise.all([
-			callCoreInfo().catch(function() { return null; }),
-			callInterfaces().catch(function() { return { interfaces: [] }; })
-		]);
+		return callInterfaces().catch(function() { return { interfaces: [] }; });
 	},
 
 	render: function(data) {
 		let m, s, o;
-		var coreInfo = data[0];
-		var interfaces = data[1].interfaces || [];
+		var interfaces = data.interfaces || [];
 
 		m = new form.Map('AdGuardHome');
 
