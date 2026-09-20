@@ -2,7 +2,9 @@ name: build-ipk
 
 on:
   push:
-    tags: ['*']
+    tags:
+      - 'v*'
+      - 'dev-*'
 
 permissions:
   contents: write
