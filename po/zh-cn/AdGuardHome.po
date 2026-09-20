@@ -126,18 +126,6 @@ msgid "Press load culculate model and culculate finally save/apply"
 msgstr "按载入计算模块 然后计算 最后保存并应用"
 
 #
-msgid "Keep files when system upgrade"
-msgstr "系统升级时保留文件"
-#checkbox
-msgid "core bin"
-msgstr "核心执行文件"
-
-msgid "config file"
-msgstr "配置文件"
-
-msgid "On boot when network ok restart"
-msgstr "开机后网络准备好时重启"
-
 #/cgi-bin/luci/admin/services/AdGuardHome/log/
 msgid "reverse"
 msgstr "逆序"
