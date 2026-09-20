@@ -30,5 +30,16 @@
                 "depends": {
                         "acl": [ "luci-app-adguardhome" ]
                 }
+        },
+        "admin/services/AdGuardHomeJS/manual": {
+                "title": "Manual Config",
+                "order": 3,
+                "action": {
+                        "type": "view",
+                        "path": "adguardhome/manual"
+                },
+                "depends": {
+                        "acl": [ "luci-app-adguardhome" ]
+                }
         }
 }
