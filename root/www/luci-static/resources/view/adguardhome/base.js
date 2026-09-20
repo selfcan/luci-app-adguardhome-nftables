@@ -103,25 +103,6 @@ return view.extend({
                 o.default = '0';
                 o.rmempty = true;
 
-                o = s.option(
-                        form.MultiValue,
-                        'upprotect',
-                        _('Keep files when system upgrade')
-                );
-
-                o.value('$binpath', _('Core binary'));
-                o.value('$configpath', _('Config file'));
-                o.widget = 'checkbox';
-                o.rmempty = true;
-
-                o = s.option(
-                        form.Flag,
-                        'waitonboot',
-                        _('On boot when network is ready restart')
-                );
-                o.default = '1';
-                o.rmempty = true;
-
                 return m.render().then(function(node) {
                         var badgeStyle = 'display:inline-flex;align-items:center;padding:0.4em 0.8em;' +
                                 'border:1px solid;border-radius:999px;font-weight:600;line-height:1.4;';
